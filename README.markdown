@@ -24,5 +24,6 @@ docker exec -it websocket_client_1 bash
 cd client/
 make clean
 make
+# Use `docker inspect websocket_server | grep IP` to find server IP
 bin/client --address <IP of server> --port 2333
 ```
