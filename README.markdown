@@ -1,3 +1,7 @@
+### Introduction
+Inspired by [memcached source](https://github.com/memcached/memcached), this project tried to implement [websocket protocol](https://tools.ietf.org/html/rfc6455) using [libevent](http://www.wangafu.net/~nickm/libevent-book/) and [pthread](http://man7.org/linux/man-pages/man7/pthreads.7.html).
+
+### Set up
 Make sure official image `gcc` is available
 
 ```
@@ -20,5 +24,5 @@ docker exec -it websocket_client_1 bash
 cd client/
 make clean
 make
-bin/client
+bin/client --address <IP of server> --port 2333
 ```
