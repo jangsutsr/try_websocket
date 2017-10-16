@@ -46,7 +46,7 @@ get_conn_sok(const char *address, const int port)
 		break;
 	}
 	if (possible_addr == NULL)
-		error(1, errno, "Cannot establish connection.");
+		error(1, errno, "Cannot establish connection");
 
 	return return_sock;
 }
@@ -64,12 +64,10 @@ main(int argc, char **argv)
 	if (populate_arguments(argc, argv, &inputs))
 		return 1;
 
-	printf("%s\n", inputs.address);
-	printf("%d\n", inputs.port);
 	conn_sok = get_conn_sok(inputs.address, inputs.port);
 	printf("Connection established\n");
 
 	if (close(conn_sok) != 0)
-		error(1, errno, "Error closing connection socket.");
+		error(1, errno, "Error closing connection socket");
 	return 0;
 }

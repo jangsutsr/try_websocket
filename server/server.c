@@ -57,23 +57,15 @@ create_listen_socket(const int port_num)
 int
 main(int argc, char **argv)
 {
-	struct sockaddr_in sa;
-	int sa_len;
 	struct arguments inputs = {
 		.port = 0,
 	};
 
-	printf("nprocs: %d\n", get_nprocs_conf());
+	//printf("nprocs: %d\n", get_nprocs_conf());
 
 	parse_arguments(argc, argv, &inputs);
 
 	listening_sok = create_listen_socket(inputs.port);
-
-	sa_len = sizeof(sa);
-	if (getsockname(listening_sok, &sa, &sa_len) != 0)
-		error(1, errno, "hehe\n");
-	printf("Local IP address is: %s\n", inet_ntoa(sa.sin_addr));
-	printf("Local port is: %d\n", (int) ntohs(sa.sin_port));
 
 	set_up_main_events(listening_sok);
 	signal(SIGINT, &handle_control_c);
@@ -82,6 +74,6 @@ main(int argc, char **argv)
 
 	tear_down_main_events();
 	if (close(listening_sok) == -1)
-		error(1, errno, "Error closing listening socket.\n");
+		error(1, errno, "Error closing listening socket");
 	return 0;
 }

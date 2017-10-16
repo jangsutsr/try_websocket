@@ -5,8 +5,8 @@ Inspired by [memcached source](https://github.com/memcached/memcached), this pro
 Make sure official image `gcc` is available
 
 ```
-docker run --name websocket_server -dit -v /Users/siruitan/try_websocket/server/:/server gcc
-docker run --name websocket_client_1 -dit -v /Users/siruitan/try_websocket/client/:/client gcc
+docker run --name websocket_server -dit -v /Users/siruitan/try_websocket/server/:/server gcc_with_gdb:1.0
+docker run --name websocket_client_1 -dit -v /Users/siruitan/try_websocket/client/:/client gcc_with_gdb:1.0
 ```
 
 ```

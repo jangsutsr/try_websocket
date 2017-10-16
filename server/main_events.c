@@ -47,7 +47,7 @@ void
 tear_down_main_events(void)
 {
 	if (event_base_loopexit(listening_event_base, NULL) == -1)
-		error(1, errno, "Error exiting listening event loop.\n");
+		error(1, errno, "Error exiting listening event loop");
 	event_free(new_connection_event);
 	event_base_free(listening_event_base);
 }

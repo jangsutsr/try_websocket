@@ -8,13 +8,10 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include <sys/sysinfo.h>
+//#include <sys/sysinfo.h>
 
 #include <sys/socket.h>
 #include <netdb.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <signal.h>
 
