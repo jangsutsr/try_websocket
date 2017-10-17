@@ -27,18 +27,14 @@ get_conn_sok(const char *address, const int port)
 	free(port_str);
 	possible_addr = possible_addrs;
 	while (possible_addr != NULL) {
-		return_sock = socket(
-			possible_addr->ai_family,
-			possible_addr->ai_socktype,
-			possible_addr->ai_protocol
-		);
+		return_sock = socket(possible_addr->ai_family,
+							 possible_addr->ai_socktype,
+							 possible_addr->ai_protocol);
 		if (return_sock == -1) {
 			possible_addr = possible_addr->ai_next;
 			continue;
 		}
-		if (connect(return_sock,
-					possible_addr->ai_addr,
-					possible_addr->ai_addrlen) == -1) {
+		if (connect(return_sock, possible_addr->ai_addr, possible_addr->ai_addrlen) == -1) {
 			close(return_sock);
 			possible_addr = possible_addr->ai_next;
 			continue;

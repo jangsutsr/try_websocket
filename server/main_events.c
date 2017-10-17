@@ -8,8 +8,7 @@ struct event *new_connection_event;
 
 
 void
-new_connection_callback(evutil_socket_t listening_sok,
-						short what, void *args)
+new_connection_callback(evutil_socket_t listening_sok, short what, void *args)
 {
 	int accepted_sok;
 
@@ -25,13 +24,8 @@ void
 set_up_main_events(int listening_sok)
 {
 	listening_event_base = event_base_new();
-	new_connection_event = event_new(
-		listening_event_base,
-		listening_sok,
-		EV_PERSIST | EV_READ,
-		&new_connection_callback,
-		NULL
-	);
+	new_connection_event = event_new(listening_event_base, listening_sok, EV_PERSIST | EV_READ,
+									 &new_connection_callback, NULL);
 	event_add(new_connection_event, NULL);
 }
 

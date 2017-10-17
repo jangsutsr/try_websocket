@@ -21,21 +21,18 @@ create_listen_socket(const int port_num)
 	addr_hints->ai_socktype = SOCK_STREAM;
 	addr_hints->ai_flags = AI_PASSIVE;
 
-	custom_errno = getaddrinfo(
-		NULL, port_num_str, addr_hints, &possible_addr_head
-	);
+	custom_errno = getaddrinfo(NULL, port_num_str, addr_hints, &possible_addr_head);
 	if (custom_errno != 0)
 		error(1, custom_errno, gai_strerror(custom_errno));
 	free(addr_hints);
 
 	for (possible_addr = possible_addr_head;
-	     possible_addr != NULL;
-	     possible_addr = possible_addr->ai_next) {
+		 possible_addr != NULL;
+		 possible_addr = possible_addr->ai_next) {
 		sok = socket(possible_addr->ai_family, SOCK_STREAM, 0);
 		if (sok < 0)
 			continue;
-		if (bind(sok, possible_addr->ai_addr,
-				 possible_addr->ai_addrlen) == -1) {
+		if (bind(sok, possible_addr->ai_addr, possible_addr->ai_addrlen) == -1) {
 			close(sok);
 			continue;
 		}

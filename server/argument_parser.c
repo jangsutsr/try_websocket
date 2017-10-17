@@ -25,9 +25,7 @@ parse_arguments(int argc, char **argv, struct arguments *arg_store)
 		&populate_port
 	};
 
-	while ((short_opt = getopt_long(
-				argc, argv, ":", longopts, &option_index
-			)) != -1) {
+	while ((short_opt = getopt_long(argc, argv, ":", longopts, &option_index)) != -1) {
 		if (!short_opt && is_long_opt) {
 			(*arg_handlers[option_index])(arg_store, optarg);
 		} else if (short_opt == '?') {

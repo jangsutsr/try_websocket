@@ -33,9 +33,7 @@ populate_arguments(int argc, char **argv, struct arguments *to_populate)
 		&populate_port
 	};
 
-	while ((short_option = getopt_long(
-				argc, argv, ":", long_options, &long_option_idx
-			)) != -1) {
+	while ((short_option = getopt_long(argc, argv, ":", long_options, &long_option_idx)) != -1) {
 		switch (short_option) {
 		case 0:
 			if (is_long_opt)
