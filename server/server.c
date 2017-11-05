@@ -2,6 +2,7 @@
 #include "argument_parser.h"
 #include "main_events.h"
 #include "signal_handlers.h"
+#include "worker.h"
 
 
 int
@@ -57,18 +58,18 @@ main(int argc, char **argv)
 	struct arguments inputs = {
 		.port = 0,
 	};
+	int *write_ends, worker_count, i;
 
-	//printf("nprocs: %d\n", get_nprocs_conf());
 
-	parse_arguments(argc, argv, &inputs);
-
-	listening_sok = create_listen_socket(inputs.port);
-
-	set_up_main_events(listening_sok);
 	signal(SIGINT, &handle_control_c);
-
+	parse_arguments(argc, argv, &inputs);
+	listening_sok = create_listen_socket(inputs.port);
+	set_up_main_events(listening_sok);
+	worker_count = set_up_workers(&write_ends);
+	printf("Worker count: %d\n", worker_count);
+	for (i = 0; i < worker_count; ++i)
+		printf("Worker write end: %d\n", write_ends[i]);
 	run_main_events();
-
 	tear_down_main_events();
 	if (close(listening_sok) == -1)
 		error(1, errno, "Error closing listening socket");
