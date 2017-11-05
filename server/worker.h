@@ -1,6 +1,12 @@
 #ifndef _WEBSOCKET_WORKER_H
 #define _WEBSOCKET_WORKER_H
 
-int set_up_workers(int **write_ends);
+
+int *write_ends, worker_count;
+
+
+void set_up_workers(void);
+void tear_down_workers(void);
+
 
 #endif

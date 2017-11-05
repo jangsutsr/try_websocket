@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <getopt.h>
 #include "argument_parser.h"
 
 
@@ -7,7 +10,6 @@ populate_port(struct arguments *arg_store, const char *optarg)
 	arg_store->port = atoi(optarg);
 	if (arg_store->port < 0)
 		arg_store->port = 0;
-
 	return 0;
 }
 
@@ -35,6 +37,5 @@ parse_arguments(int argc, char **argv, struct arguments *arg_store)
 		}
 		is_long_opt = 0;
 	}
-
 	return 0;
 }

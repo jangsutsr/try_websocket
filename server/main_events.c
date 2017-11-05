@@ -1,21 +1,36 @@
+#include <errno.h>
+#include <error.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <event2/event.h>
+
+#include "worker.h"
 #include "main_events.h"
 
 
 struct event_base *listening_event_base;
-
-
 struct event *new_connection_event;
+int round_robin;
 
 
 void
 new_connection_callback(evutil_socket_t listening_sok, short what, void *args)
 {
-	int accepted_sok;
+	int accepted_sok, write_end;
+	void *msg;
 
 	accepted_sok = accept(listening_sok, NULL, NULL);
 	if (accepted_sok != -1) {
-		printf("Incoming request.\n");
-		close(accepted_sok);
+		if (round_robin >= worker_count)
+			round_robin = 0;
+		write_end = write_ends[round_robin++];
+		msg = malloc(sizeof(char) + sizeof(int));
+		*((char *)msg) = 'c';
+		*((int *)(msg + sizeof(char))) = accepted_sok;
+		write(write_end, msg, sizeof(char) + sizeof(int));
+		free(msg);
 	}
 }
 
@@ -24,8 +39,10 @@ void
 set_up_main_events(int listening_sok)
 {
 	listening_event_base = event_base_new();
-	new_connection_event = event_new(listening_event_base, listening_sok, EV_PERSIST | EV_READ,
-									 &new_connection_callback, NULL);
+	new_connection_event = event_new(
+		listening_event_base, listening_sok, EV_PERSIST | EV_READ,
+		&new_connection_callback, NULL
+	);
 	event_add(new_connection_event, NULL);
 }
 

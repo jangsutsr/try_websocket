@@ -1,5 +1,5 @@
-#include "server.h" 
-
+#ifndef _WEBSOCKET_ARGUMENT_PARSER_H
+#define _WEBSOCKET_ARGUMENT_PARSER_H
 
 struct arguments {
 	int port;
@@ -7,3 +7,5 @@ struct arguments {
 
 
 int parse_arguments(int argc, char **argv, struct arguments *arg_store);
+
+#endif

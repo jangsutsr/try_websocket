@@ -1,20 +1,6 @@
-#include <errno.h>
-#include <error.h>
+#ifndef _WEBSOCKET_SERVER_H
+#define _WEBSOCKET_SERVER_H
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+extern int listening_sok;
 
-#include <unistd.h>
-#include <getopt.h>
-
-//#include <sys/sysinfo.h>
-
-#include <sys/socket.h>
-#include <netdb.h>
-
-#include <signal.h>
-
-#include <event2/event.h>
-
-int listening_sok;
+#endif
