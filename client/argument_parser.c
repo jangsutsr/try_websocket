@@ -55,4 +55,3 @@ populate_arguments(int argc, char **argv, struct arguments *to_populate)
 
 	return 0;
 }
-
