@@ -2,10 +2,13 @@
 #include <error.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <event2/event.h>
 #include <sys/sysinfo.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include "worker.h"
 
 
@@ -29,6 +32,22 @@ struct event **pipe_events;
 int *pipes;
 
 
+int
+set_up_ws_connection(int sok)
+{
+	char *buffer = calloc(1024, sizeof(char));
+	ssize_t recv_bytes;
+
+	while ((recv_bytes = recv(sok, buffer, 1023, MSG_DONTWAIT)) > 0) {
+		printf("%s", buffer);
+		memset(buffer, '\0', recv_bytes);
+	}
+	send(sok, "hehe\r\n\r\n", 8 * sizeof(char), 0);
+	free(buffer);
+	return 0;
+}
+
+
 void
 pipe_callback(evutil_socket_t read_end, short what, void *args)
 {
@@ -40,7 +59,8 @@ pipe_callback(evutil_socket_t read_end, short what, void *args)
 	switch (flag) {
 	case 'c':
 		read(read_end, &sok, sizeof(int));
-		printf("%d, %d\n", sok, (int)pthread_self());
+		if (set_up_ws_connection(sok) != 0)
+			printf("hehe\n");
 		close(sok);
 		break;
 	case 'e':
