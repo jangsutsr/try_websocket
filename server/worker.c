@@ -12,6 +12,9 @@
 #include "worker.h"
 
 
+#define FREE_IF_NOT_NULL(x) if(x!=NULL){free(x);x=NULL;}
+
+
 struct thread_input {
 	int read_end;
 	int thread_index;
@@ -21,6 +24,12 @@ struct thread_input {
 struct pipe_callback_input {
 	struct event_base *worker_event_base;
 	struct event **pipe_event;
+};
+
+struct request_start_line {
+	char *method;
+	char *request_target;
+	char *http_version;
 };
 
 
@@ -33,17 +42,104 @@ int *pipes;
 
 
 int
+init_start_line(char *buffer, ssize_t start, ssize_t end, struct request_start_line *req_start)
+{
+	ssize_t left = start, right = start;
+
+	req_start->method = NULL;
+	req_start->request_target = NULL;
+	req_start->http_version = NULL;
+	while (left < end && buffer[left] != ' ') {
+		while (right < end && buffer[right] != ' ')
+			++right;
+		req_start->method = calloc(right - left + 1, sizeof(char));
+		memcpy(req_start->method, buffer + left, sizeof(char) * (right - left));
+		left = right;
+	}
+	if (left >= end)
+		return 1;
+	++left;
+	++right;
+	while (left < end && buffer[left] != ' ') {
+		while (right < end && buffer[right] != ' ')
+			++right;
+		req_start->request_target = calloc(right - left + 1, sizeof(char));
+		memcpy(req_start->request_target, buffer + left, sizeof(char) * (right - left));
+		left = right;
+	}
+	if (left >= end)
+		return 1;
+	++left;
+	++right;
+	while (left < end && buffer[left] != '\r' && buffer[left] != '\n') {
+		while (right < end && buffer[right] != '\r' && buffer[right] != '\n')
+			++right;
+		req_start->http_version = calloc(right - left + 1, sizeof(char));
+		memcpy(req_start->http_version, buffer + left, sizeof(char) * (right - left));
+		left = right;
+	}
+	printf("%s\n%s\n%s\n\n", req_start->method, req_start->request_target, req_start->http_version);
+	return 0;
+}
+
+
+void
+destroy_start_line(struct request_start_line *req_start)
+{
+	FREE_IF_NOT_NULL(req_start->method)
+	FREE_IF_NOT_NULL(req_start->request_target)
+	FREE_IF_NOT_NULL(req_start->http_version)
+	FREE_IF_NOT_NULL(req_start)
+}
+
+
+int
+process_header_line(char *buffer, int start, int end)
+{
+	/*
+	for(; start < end; ++start)
+		putchar(buffer[start]);
+	putchar('\n');
+	*/
+	return 0;
+}
+
+
+int
 set_up_ws_connection(int sok)
 {
 	char *buffer = calloc(1024, sizeof(char));
-	ssize_t recv_bytes;
+	ssize_t recv_bytes, left = 0, right = 0;
+	int line_count = 0;
+	struct request_start_line *req_start = calloc(1, sizeof(struct request_start_line));
 
-	while ((recv_bytes = recv(sok, buffer, 1023, MSG_DONTWAIT)) > 0) {
-		printf("%s", buffer);
-		memset(buffer, '\0', recv_bytes);
+	while ((recv_bytes = recv(sok, buffer + right, 1023 - right, MSG_DONTWAIT)) > 0) {
+		left = 0;
+		while (1) {
+			while (right < recv_bytes && buffer[right] != '\n')
+				++right;
+			if (right < recv_bytes) {
+				++right;
+				if ((line_count++) == 0 && init_start_line(buffer, left, right, req_start)) {
+					destroy_start_line(req_start);
+					FREE_IF_NOT_NULL(buffer)
+					return 1;
+				} else if (line_count > 0 && process_header_line(buffer, left, right)) {
+					FREE_IF_NOT_NULL(buffer)
+					return 1;
+				}
+				left = right;
+			} else {
+				memmove(buffer, buffer + left, right - left);
+				memset(buffer + right - left, '\0', 1024 - (right - left));
+				right -= left;
+				break;
+			}
+		}
 	}
 	send(sok, "hehe\r\n\r\n", 8 * sizeof(char), 0);
-	free(buffer);
+	destroy_start_line(req_start);
+	FREE_IF_NOT_NULL(buffer)
 	return 0;
 }
 
