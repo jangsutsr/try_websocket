@@ -1,4 +1,4 @@
-all: server argument_parser main_events worker
+all: server argument_parser main_events worker headers
 	gcc -Wall -g -levent -pthread -o bin/server bin/*.o
 
 server:
@@ -12,6 +12,9 @@ main_events:
 
 worker:
 	gcc -Wall -g -c worker.c -o bin/worker.o
+
+headers:
+	gcc -Wall -g -c headers.c -o bin/headers.o
 
 clean:
 	rm bin/*.o

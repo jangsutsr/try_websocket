@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "worker.h"
+#include "headers.h"
 
 
 #define FREE_IF_NOT_NULL(x) if(x!=NULL){free(x);x=NULL;}
@@ -78,7 +79,6 @@ init_start_line(char *buffer, ssize_t start, ssize_t end, struct request_start_l
 		memcpy(req_start->http_version, buffer + left, sizeof(char) * (right - left));
 		left = right;
 	}
-	printf("%s\n%s\n%s\n\n", req_start->method, req_start->request_target, req_start->http_version);
 	return 0;
 }
 
@@ -94,25 +94,15 @@ destroy_start_line(struct request_start_line *req_start)
 
 
 int
-process_header_line(char *buffer, int start, int end)
-{
-	/*
-	for(; start < end; ++start)
-		putchar(buffer[start]);
-	putchar('\n');
-	*/
-	return 0;
-}
-
-
-int
 set_up_ws_connection(int sok)
 {
 	char *buffer = calloc(1024, sizeof(char));
 	ssize_t recv_bytes, left = 0, right = 0;
 	int line_count = 0;
 	struct request_start_line *req_start = calloc(1, sizeof(struct request_start_line));
+	struct request_headers *headers;
 
+	init_headers(&headers, 100);
 	while ((recv_bytes = recv(sok, buffer + right, 1023 - right, MSG_DONTWAIT)) > 0) {
 		left = 0;
 		while (1) {
@@ -120,15 +110,18 @@ set_up_ws_connection(int sok)
 				++right;
 			if (right < recv_bytes) {
 				++right;
-				if ((line_count++) == 0 && init_start_line(buffer, left, right, req_start)) {
+				if (line_count == 0 && init_start_line(buffer, left, right, req_start)) {
 					destroy_start_line(req_start);
 					FREE_IF_NOT_NULL(buffer)
 					return 1;
-				} else if (line_count > 0 && process_header_line(buffer, left, right)) {
+				} else if (line_count > 0 && process_header_line(buffer, left, right, headers)) {
+					destroy_headers(headers);
+					destroy_start_line(req_start);
 					FREE_IF_NOT_NULL(buffer)
 					return 1;
 				}
 				left = right;
+				++line_count;
 			} else {
 				memmove(buffer, buffer + left, right - left);
 				memset(buffer + right - left, '\0', 1024 - (right - left));
@@ -138,6 +131,8 @@ set_up_ws_connection(int sok)
 		}
 	}
 	send(sok, "hehe\r\n\r\n", 8 * sizeof(char), 0);
+	display_headers(headers);
+	destroy_headers(headers);
 	destroy_start_line(req_start);
 	FREE_IF_NOT_NULL(buffer)
 	return 0;
