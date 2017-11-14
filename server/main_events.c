@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <event2/event.h>
 
-#include "worker.h"
+#include "server.h"
 #include "main_events.h"
 
 
@@ -25,7 +25,7 @@ new_connection_callback(evutil_socket_t listening_sok, short what, void *args)
 	if (accepted_sok != -1) {
 		if (round_robin >= worker_count)
 			round_robin = 0;
-		write_end = write_ends[round_robin++];
+		write_end = workers[round_robin++].write_end;
 		msg = malloc(sizeof(char) + sizeof(int));
 		*((char *)msg) = 'c';
 		*((int *)(msg + sizeof(char))) = accepted_sok;

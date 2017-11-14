@@ -10,88 +10,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "worker.h"
+#include "start_line.h"
 #include "headers.h"
 
 
 #define FREE_IF_NOT_NULL(x) if(x!=NULL){free(x);x=NULL;}
-
-
-struct thread_input {
-	int read_end;
-	int thread_index;
-};
-
-
-struct pipe_callback_input {
-	struct event_base *worker_event_base;
-	struct event **pipe_event;
-};
-
-struct request_start_line {
-	char *method;
-	char *request_target;
-	char *http_version;
-};
-
-
-int *write_ends, worker_count;
-pthread_t *threads;
-struct thread_input *worker_inputs;
-struct event_base **worker_event_bases;
-struct event **pipe_events;
-int *pipes;
-
-
-int
-init_start_line(char *buffer, ssize_t start, ssize_t end, struct request_start_line *req_start)
-{
-	ssize_t left = start, right = start;
-
-	req_start->method = NULL;
-	req_start->request_target = NULL;
-	req_start->http_version = NULL;
-	while (left < end && buffer[left] != ' ') {
-		while (right < end && buffer[right] != ' ')
-			++right;
-		req_start->method = calloc(right - left + 1, sizeof(char));
-		memcpy(req_start->method, buffer + left, sizeof(char) * (right - left));
-		left = right;
-	}
-	if (left >= end)
-		return 1;
-	++left;
-	++right;
-	while (left < end && buffer[left] != ' ') {
-		while (right < end && buffer[right] != ' ')
-			++right;
-		req_start->request_target = calloc(right - left + 1, sizeof(char));
-		memcpy(req_start->request_target, buffer + left, sizeof(char) * (right - left));
-		left = right;
-	}
-	if (left >= end)
-		return 1;
-	++left;
-	++right;
-	while (left < end && buffer[left] != '\r' && buffer[left] != '\n') {
-		while (right < end && buffer[right] != '\r' && buffer[right] != '\n')
-			++right;
-		req_start->http_version = calloc(right - left + 1, sizeof(char));
-		memcpy(req_start->http_version, buffer + left, sizeof(char) * (right - left));
-		left = right;
-	}
-	return 0;
-}
-
-
-void
-destroy_start_line(struct request_start_line *req_start)
-{
-	FREE_IF_NOT_NULL(req_start->method)
-	FREE_IF_NOT_NULL(req_start->request_target)
-	FREE_IF_NOT_NULL(req_start->http_version)
-	FREE_IF_NOT_NULL(req_start)
-}
-
 
 int
 set_up_ws_connection(int sok)
@@ -110,13 +33,13 @@ set_up_ws_connection(int sok)
 				++right;
 			if (right < recv_bytes) {
 				++right;
-				if (line_count == 0 && init_start_line(buffer, left, right, req_start)) {
-					destroy_start_line(req_start);
+				if (line_count == 0 && req_start_line_init(buffer, left, right, req_start)) {
+					req_start_line_destroy(req_start);
 					FREE_IF_NOT_NULL(buffer)
 					return 1;
 				} else if (line_count > 0 && process_header_line(buffer, left, right, headers)) {
 					destroy_headers(headers);
-					destroy_start_line(req_start);
+					req_start_line_destroy(req_start);
 					FREE_IF_NOT_NULL(buffer)
 					return 1;
 				}
@@ -133,16 +56,16 @@ set_up_ws_connection(int sok)
 	send(sok, "hehe\r\n\r\n", 8 * sizeof(char), 0);
 	display_headers(headers);
 	destroy_headers(headers);
-	destroy_start_line(req_start);
+	req_start_line_destroy(req_start);
 	FREE_IF_NOT_NULL(buffer)
 	return 0;
 }
 
 
 void
-pipe_callback(evutil_socket_t read_end, short what, void *args)
+worker_pipe_callback(evutil_socket_t read_end, short what, void *args)
 {
-	struct pipe_callback_input *pipe_callback_input = args;
+	struct worker_pipe_callback_input *pipe_callback_input = args;
 	char flag;
 	int sok;
 	
@@ -163,7 +86,7 @@ pipe_callback(evutil_socket_t read_end, short what, void *args)
 
 
 void
-tear_down_worker_event(struct event_base *worker_event_base, struct event *pipe_event)
+worker_tear_down_event(struct event_base *worker_event_base, struct event *pipe_event)
 {
 	if (event_base_loopexit(worker_event_base, NULL) == -1)
 		error(1, errno, "Error exiting listening event loop");
@@ -175,60 +98,51 @@ tear_down_worker_event(struct event_base *worker_event_base, struct event *pipe_
 void *
 worker_main(void *input)
 {
-	struct thread_input *thread_input = (struct thread_input *)input;
-	struct pipe_callback_input pipe_callback_input;
+	struct worker_thread_input *thread_input = (struct worker_thread_input *)input;
 	
-	pipe_callback_input.pipe_event = pipe_events + thread_input->thread_index;
-	worker_event_bases[thread_input->thread_index] = event_base_new();
-	pipe_callback_input.worker_event_base = worker_event_bases[thread_input->thread_index];
-	pipe_events[thread_input->thread_index] = event_new(
-		worker_event_bases[thread_input->thread_index], thread_input->read_end,
-		EV_PERSIST | EV_READ, &pipe_callback, &pipe_callback_input
+	thread_input->event_base = event_base_new();
+	thread_input->pipe_event = event_new(
+		thread_input->event_base, thread_input->read_end, EV_PERSIST | EV_READ,
+		&worker_pipe_callback, &(thread_input->pipe_callback)
 	);
-	event_add(pipe_events[thread_input->thread_index], NULL);
-	event_base_loop(worker_event_bases[thread_input->thread_index], 0);
-	tear_down_worker_event(worker_event_bases[thread_input->thread_index],
-						   pipe_events[thread_input->thread_index]);
+	(thread_input->pipe_callback).worker_event_base = thread_input->event_base;
+	(thread_input->pipe_callback).pipe_event = &(thread_input->pipe_event);
+	event_add(thread_input->pipe_event, NULL);
+	event_base_loop(thread_input->event_base, 0);
+	worker_tear_down_event(thread_input->event_base, thread_input->pipe_event);
 	return NULL;
 }
 
 
-void
-set_up_workers(void)
+int
+worker_set_up(struct worker **workers)
 {
-	int i;
+	int i, worker_count, p[2];
 
 	worker_count = get_nprocs_conf();
-	threads = calloc(worker_count, sizeof(pthread_t));
-	worker_inputs = calloc(worker_count, sizeof(struct thread_input));
-	worker_event_bases = calloc(worker_count, sizeof(struct event_base *));
-	pipe_events = calloc(worker_count, sizeof(struct event *));
-	pipes = calloc(2 * worker_count, sizeof(int));
-	write_ends = calloc(worker_count, sizeof(int));
+	*workers = calloc(worker_count, sizeof(struct worker));
 	for (i = 0; i < worker_count; ++i) {
-		worker_inputs[i].thread_index = i;
-		pipe(pipes + 2 * i);
-		worker_inputs[i].read_end = pipes[2 * i];
-		write_ends[i] = pipes[2 * i + 1];
-		pthread_create(threads + i, NULL, &worker_main, worker_inputs + i);
+		(*workers)[i].thread_input.thread_index = i;
+		pipe(p);
+		(*workers)[i].thread_input.read_end = p[0];
+		(*workers)[i].write_end = p[1];
+		pthread_create(
+			&((*workers)[i].thread), NULL, &worker_main, &((*workers)[i].thread_input)
+		);
 	}
+	return worker_count;
 }
 
 
 void
-tear_down_workers(void)
+worker_tear_down(struct worker *workers, int worker_count)
 {
 	int i;
 	char flag = 'e'; 
 
 	for (i = 0; i < worker_count; ++i) {
-		write(write_ends[i], &flag, sizeof(char));
-		pthread_join(threads[i], NULL);
+		write(workers[i].write_end, &flag, sizeof(char));
+		pthread_join(workers[i].thread, NULL);
 	}
-	free(write_ends);
-	free(threads);
-	free(worker_inputs);
-	free(pipes);
-	free(pipe_events);
-	free(worker_event_bases);
+	free(workers);
 }

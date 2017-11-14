@@ -17,6 +17,8 @@
 
 
 int listening_sok;
+struct worker *workers;
+int worker_count;
 
 
 int
@@ -61,11 +63,10 @@ create_listen_socket(const int port_num)
 }
 
 
-
 void
 handle_control_c(int signal)
 {
-	tear_down_workers();
+	worker_tear_down(workers, worker_count);
 	tear_down_main_events();	
 	if (close(listening_sok) == -1)
 		error(1, errno, "Error closing listening socket");
@@ -84,7 +85,7 @@ main(int argc, char **argv)
 	parse_arguments(argc, argv, &inputs);
 	listening_sok = create_listen_socket(inputs.port);
 	set_up_main_events(listening_sok);
-	set_up_workers();
+	worker_count = worker_set_up(&workers);
 	printf("Worker count: %d\n", worker_count);
 	run_main_events();
 	handle_control_c(SIGINT);
